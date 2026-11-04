@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "对话导出助手",
+  "description": "将当前豆包或 DeepSeek 对话导出为 Markdown 或 JSON，支持接口读取与滚动兜底。",
+  "version": "0.4.0",
+  "action": {
+    "default_title": "导出当前对话",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://doubao.com/chat/*",
+        "https://www.doubao.com/chat/*",
+        "https://*.doubao.com/chat/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://chat.deepseek.com/*"],
+      "js": ["deepseek-content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-hook.js"],
+      "matches": [
+        "https://doubao.com/*",
+        "https://www.doubao.com/*",
+        "https://*.doubao.com/*"
+      ]
+    },
+    {
+      "resources": ["deepseek-page-hook.js"],
+      "matches": ["https://chat.deepseek.com/*"]
+    }
+  ],
+  "permissions": ["activeTab", "scripting"]
+}

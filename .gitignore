@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# 打包产物（发布包放 GitHub Releases）
+*.zip

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>对话导出助手</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>对话导出助手</h1>
+        <p>在豆包或 DeepSeek 对话页点击导出当前对话。</p>
+      </header>
+
+      <label class="option">
+        <input id="autoScroll" type="checkbox" />
+        <span>接口失败且无数据时允许滚动兜底</span>
+      </label>
+
+      <label class="field">
+        <span>导出方式</span>
+        <select id="exportMode">
+          <option value="api-only" selected>只用接口</option>
+          <option value="api-first">接口优先，无数据再滚动</option>
+          <option value="scroll-only">只用滚动</option>
+        </select>
+      </label>
+
+      <details class="advanced">
+        <summary>高级设置</summary>
+        <section class="settings" aria-label="导出限制">
+          <label>
+            <span>向上加载次数</span>
+            <input id="maxSeekSteps" type="number" min="10" max="1000" step="10" value="240" />
+          </label>
+          <label>
+            <span>向下收集屏数</span>
+            <input id="maxCollectScreens" type="number" min="10" max="1000" step="10" value="300" />
+          </label>
+          <p class="settings-note">以下三项只对豆包生效，DeepSeek 一次读取整个会话。</p>
+          <label>
+            <span>接口页数</span>
+            <input id="maxApiPages" type="number" min="1" max="5000" step="1" value="1000" />
+          </label>
+          <label>
+            <span>每页条数</span>
+            <input id="apiPageSize" type="number" min="1" max="50" step="1" value="20" />
+          </label>
+          <label>
+            <span>起始 Anchor</span>
+            <input id="apiStartAnchor" type="number" min="0" step="1" placeholder="自动" />
+          </label>
+        </section>
+      </details>
+
+      <div class="actions">
+        <button id="exportMarkdown" type="button">导出 Markdown</button>
+        <button id="exportJson" type="button">导出 JSON</button>
+        <button id="stopExport" type="button" disabled>停止</button>
+      </div>
+
+      <div class="progress" aria-hidden="true">
+        <span id="progressBar"></span>
+      </div>
+      <p id="status" role="status">等待操作</p>
+      <p id="detail"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>对话导出助手 商店素材</title>
+<!--
+  商店素材设计稿。用 ?view=xxx 选择画面，render.sh 会逐个截图：
+  shot1 / shot2 / shot3 / shot4  1280x800 商店截图
+  small                          440x280 小宣传图
+  marquee                        1400x560 大宣传图
+  弹窗部分直接 iframe 引用插件真实的 popup.html，渲染时需要 --allow-file-access-from-files。
+-->
+<style>
+  :root {
+    --blue: #1c64f2;
+    --blue-dark: #1a4fd6;
+    --ink: #0f1b33;
+    --muted: #5d6875;
+    --line: #dfe5ec;
+    --bg: #f4f7fc;
+    --doubao: #e11d48;
+    --deepseek: #4d6bfe;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #fff;
+    overflow: hidden;
+  }
+  .canvas {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 92% 8%, rgba(79,140,255,.18), transparent 38%),
+      radial-gradient(circle at 0% 100%, rgba(79,140,255,.12), transparent 42%),
+      linear-gradient(180deg, #f7faff, #eaf1fd);
+  }
+  .shot { width: 1280px; height: 800px; }
+
+  /* 顶部标题区 */
+  .head { position: absolute; left: 72px; top: 54px; right: 72px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 600; color: var(--blue);
+  }
+  .eyebrow img { width: 28px; height: 28px; }
+  .title { margin: 12px 0 0; font-size: 44px; line-height: 1.2; font-weight: 700; letter-spacing: .5px; }
+  .title em { font-style: normal; color: var(--blue); }
+  .sub { margin: 10px 0 0; font-size: 20px; color: var(--muted); }
+
+  /* 浏览器窗口 */
+  .window {
+    position: absolute;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 30px 70px rgba(15,27,51,.16), 0 2px 6px rgba(15,27,51,.06);
+    overflow: hidden;
+  }
+  .chrome-bar {
+    height: 44px; display: flex; align-items: center; gap: 14px;
+    padding: 0 16px; background: #eef1f5; border-bottom: 1px solid var(--line);
+  }
+  .dots { display: flex; gap: 7px; }
+  .dots i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+  .dots i:nth-child(2) { background: #febc2e; }
+  .dots i:nth-child(3) { background: #28c840; }
+  .url {
+    flex: 1; height: 28px; border-radius: 14px; background: #fff;
+    display: flex; align-items: center; padding: 0 14px;
+    font-size: 13px; color: #4b5563;
+  }
+  .url b { font-weight: 500; color: #111827; }
+  .ext-icon { width: 22px; height: 22px; border-radius: 6px; }
+  .ext-icon.active { outline: 3px solid rgba(28,100,242,.25); outline-offset: 2px; }
+
+  /* 中性风格的聊天页面（不模仿任何网站的界面） */
+  .page { position: relative; display: flex; height: calc(100% - 44px); }
+  .side { width: 210px; background: #f7f8fa; border-right: 1px solid var(--line); padding: 18px 14px; }
+  .side .new { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fff; margin-bottom: 18px; }
+  .side .item { height: 12px; border-radius: 6px; background: #e3e8ef; margin: 16px 6px; }
+  .side .item.on { background: #cfd8e6; }
+  .chat { flex: 1; padding: 76px 40px 30px; display: flex; flex-direction: column; gap: 18px; }
+  .msg { max-width: 82%; font-size: 15px; line-height: 1.7; }
+  .msg.user {
+    align-self: flex-end; background: #eef3ff; color: #1f2a44;
+    padding: 10px 16px; border-radius: 16px 16px 4px 16px;
+  }
+  .msg.ai { align-self: flex-start; display: flex; gap: 12px; }
+  .avatar {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #c7d2fe, #a5b4fc);
+  }
+  .msg.ai p { margin: 0 0 6px; }
+  .msg.ai ul { margin: 0; padding-left: 20px; }
+  .think {
+    border-left: 3px solid #d5dbe5; padding: 2px 0 2px 12px; margin-bottom: 8px;
+    color: #7b8794; font-size: 14px;
+  }
+  .composer {
+    margin-top: auto; height: 52px; border-radius: 16px; border: 1px solid var(--line);
+    background: #fff; box-shadow: 0 4px 14px rgba(15,27,51,.05);
+  }
+
+  /* 插件真实的悬浮按钮样式 */
+  .floating {
+    position: absolute; top: 24px; right: 22px;
+    height: 36px; padding: 0 14px; border-radius: 999px; color: #fff;
+    font: 600 14px/36px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  }
+  .floating.doubao { background: var(--doubao); box-shadow: 0 8px 24px rgba(225,29,72,.28); }
+  .floating.deepseek { background: var(--deepseek); box-shadow: 0 8px 24px rgba(77,107,254,.28); }
+  .cursor {
+    position: absolute; width: 22px; height: 22px;
+    background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l16 11-7 1.5L9.5 21z' fill='%23111' stroke='%23fff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  /* 真实弹窗 */
+  .popup {
+    position: absolute; width: 320px; border: 0; border-radius: 12px; background: #f7f8fa;
+    box-shadow: 0 24px 60px rgba(15,27,51,.22), 0 0 0 1px rgba(15,27,51,.06);
+  }
+
+  /* 文件预览 */
+  .file {
+    position: absolute; background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 30px 70px rgba(15,27,51,.16), 0 2px 6px rgba(15,27,51,.06);
+  }
+  .file-bar {
+    height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 18px;
+    border-bottom: 1px solid var(--line); font-size: 14px; color: #374151; background: #fafbfd;
+  }
+  .tag { padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #fff; }
+  .tag.md { background: var(--blue); }
+  .tag.json { background: #f59e0b; }
+  pre {
+    margin: 0; padding: 20px 22px; font: 14px/1.75 "SF Mono", Menlo, "PingFang SC", monospace;
+    color: #1f2937; white-space: pre-wrap;
+  }
+  .k { color: #1c64f2; } .s { color: #067647; } .h { color: #1c64f2; font-weight: 700; } .q { color: #7b8794; } .c { color: #9ca3af; }
+
+  /* 卖点 */
+  .points { position: absolute; display: grid; gap: 16px; }
+  .point { display: flex; gap: 14px; align-items: flex-start; }
+  .point .ico {
+    flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: #e3ecff; color: var(--blue);
+  }
+  .point .ico svg { width: 22px; height: 22px; }
+  .point b { display: block; font-size: 18px; }
+  .point span { display: block; margin-top: 2px; font-size: 15px; color: var(--muted); }
+
+  .site-card {
+    position: absolute; width: 536px; height: 300px; background: #fff; border-radius: 18px; padding: 30px 34px;
+    box-shadow: 0 24px 60px rgba(15,27,51,.12), 0 1px 3px rgba(15,27,51,.06);
+  }
+  .site-card h3 { margin: 0; font-size: 28px; }
+  .site-card .desc { margin-top: 14px; font-size: 16px; line-height: 1.6; color: #374151; }
+  .site-card .path { margin-top: 8px; font: 15px/1.6 "SF Mono", Menlo, monospace; color: var(--muted); }
+  .site-card .chips { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .chip { padding: 6px 12px; border-radius: 999px; background: #eef3ff; color: var(--blue); font-size: 14px; font-weight: 600; }
+  .site-card .floating { position: static; display: inline-block; margin-top: 26px; }
+
+  .privacy {
+    position: absolute; left: 72px; right: 72px; bottom: 64px; height: 150px;
+    background: #0f1b33; color: #fff; border-radius: 18px; padding: 28px 36px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+  }
+  .privacy b { display: block; font-size: 19px; }
+  .privacy span { display: block; margin-top: 8px; color: #b8c4d9; font-size: 15px; line-height: 1.6; }
+
+  /* 宣传图 */
+  .small { width: 440px; height: 280px; }
+  .marquee { width: 1400px; height: 560px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const view = new URLSearchParams(location.search).get("view") || "shot1";
+const ICON = "icon-512.png";
+const icons = {
+  bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>'
+};
+
+function head(eyebrow, title, sub) {
+  return `<div class="head">
+    <div class="eyebrow"><img src="${ICON}" alt="">${eyebrow}</div>
+    <h1 class="title">${title}</h1>
+    ${sub ? `<p class="sub">${sub}</p>` : ""}
+  </div>`;
+}
+
+function browser({ left, top, width, height, url, site, popupOpen = false, think = false, floatRight = 22 }) {
+  const button = popupOpen ? "" : `<div class="floating ${site}" style="right:${floatRight}px">导出当前会话内容 v0.4.0</div>`;
+  return `<div class="window" style="left:${left}px;top:${top}px;width:${width}px;height:${height}px">
+    <div class="chrome-bar">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="url">${url}</div>
+      <img class="ext-icon ${popupOpen ? "active" : ""}" src="${ICON}" alt="">
+    </div>
+    <div class="page">
+      <div class="side"><div class="new"></div>
+        <div class="item on"></div><div class="item"></div><div class="item" style="width:70%"></div>
+        <div class="item"></div><div class="item" style="width:60%"></div>
+      </div>
+      <div class="chat">
+        <div class="msg user">帮我列一份周末两天徒步的装备清单</div>
+        <div class="msg ai"><div class="avatar"></div><div>
+          ${think ? `<div class="think">用户要两天的徒步，需要考虑过夜、补水和天气变化……</div>` : ""}
+          <p>好的，按「必带 / 建议带」整理如下：</p>
+          <ul><li>背包 30–40L、防水罩</li><li>头灯、备用电池、充电宝</li><li>速干衣、抓绒、冲锋衣</li><li>水 2L 以上、能量食品</li></ul>
+        </div></div>
+        <div class="msg user">再按重量从轻到重排一下</div>
+        <div class="msg ai"><div class="avatar"></div><div><p>没问题，排序后的清单如下……</p></div></div>
+        <div class="composer"></div>
+      </div>
+      ${button}
+    </div>
+  </div>`;
+}
+
+function popup(left, top, height = 470) {
+  return `<iframe class="popup" id="popup" src="../../popup.html" style="left:${left}px;top:${top}px;height:${height}px"></iframe>`;
+}
+
+// 把真实弹窗设置成"导出完成"的状态
+function primePopup(state) {
+  const frame = document.getElementById("popup");
+  if (!frame) return;
+  frame.addEventListener("load", () => {
+    const d = frame.contentDocument;
+    if (!d) return;
+    d.getElementById("status").textContent = state.status;
+    d.getElementById("status").className = state.tone || "";
+    d.getElementById("detail").textContent = state.detail || "";
+    d.getElementById("progressBar").style.width = `${state.progress}%`;
+  });
+}
+
+const views = {
+  shot1: () => `<div class="canvas shot">
+    ${head("对话导出助手", "一键导出当前 <em>AI 对话</em>", "点工具栏图标或页面上的导出按钮，整段对话保存到本地")}
+    ${browser({ left: 72, top: 214, width: 1136, height: 560, url: "<b>www.doubao.com</b>/chat/1234567890123456789", site: "doubao", popupOpen: true })}
+    ${popup(852, 262, 452)}
+    <div class="cursor" style="left:1030px;top:520px"></div>
+  </div>`,
+
+  shot2: () => `<div class="canvas shot">
+    ${head("导出为 Markdown", "直接阅读，放进<em>笔记软件</em>", "标题、链接、导出时间和每一轮对话都按顺序整理好")}
+    ${browser({ left: 72, top: 214, width: 600, height: 540, url: "<b>www.doubao.com</b>/chat/1234…", site: "doubao", floatRight: 78 })}
+    <div class="file" style="left:620px;top:196px;width:588px;height:574px">
+      <div class="file-bar"><span class="tag md">MD</span>doubao-chat-1234567890123456789.md</div>
+<pre><span class="h"># 豆包对话导出</span>
+
+- 标题：周末徒步装备清单
+- URL：https://www.doubao.com/chat/1234567890123456789
+- 导出时间：2026-10-27T12:36:06.322Z
+
+<span class="h">## 对话</span>
+
+<span class="h">### 用户</span>
+
+帮我列一份周末两天徒步的装备清单
+
+<span class="h">### 豆包</span>
+
+好的，按「必带 / 建议带」整理如下：
+- 背包 30–40L、防水罩
+- 头灯、备用电池、充电宝
+- 速干衣、抓绒、冲锋衣</pre>
+    </div>
+  </div>`,
+
+  shot3: () => `<div class="canvas shot">
+    ${head("同样支持 DeepSeek", "JSON 保留<em>原始结构</em>，方便二次处理", "角色、消息 ID、深度思考内容和接口原始数据一并导出")}
+    ${browser({ left: 72, top: 214, width: 600, height: 540, url: "<b>chat.deepseek.com</b>/a/chat/s/12345678-…", site: "deepseek", think: true, floatRight: 78 })}
+    <div class="file" style="left:620px;top:196px;width:588px;height:574px">
+      <div class="file-bar"><span class="tag json">JSON</span>deepseek-chat-12345678-90ab-cdef-1234-567890abcdef.json</div>
+<pre>{
+  <span class="k">"source"</span>: <span class="s">"deepseek"</span>,
+  <span class="k">"title"</span>: <span class="s">"周末徒步装备清单"</span>,
+  <span class="k">"meta"</span>: { <span class="k">"sourceMode"</span>: <span class="s">"api"</span>, <span class="k">"branchMode"</span>: <span class="s">"current-branch"</span> },
+  <span class="k">"messages"</span>: [
+    {
+      <span class="k">"index"</span>: 1,
+      <span class="k">"role"</span>: <span class="s">"user"</span>,
+      <span class="k">"text"</span>: <span class="s">"帮我列一份周末两天徒步的装备清单"</span>
+    },
+    {
+      <span class="k">"index"</span>: 2,
+      <span class="k">"role"</span>: <span class="s">"assistant"</span>,
+      <span class="k">"text"</span>: <span class="s">"好的，按「必带 / 建议带」整理如下：…"</span>,
+      <span class="k">"thinking"</span>: <span class="s">"用户要两天的徒步，需要考虑过夜…"</span>,
+      <span class="k">"raw"</span>: { <span class="c">…</span> }
+    }
+  ]
+}</pre>
+    </div>
+  </div>`,
+
+  shot4: () => `<div class="canvas shot">
+    ${head("支持的网站", "豆包、DeepSeek <em>都能导</em>", "打开对话详情页，右上角就会出现导出按钮")}
+    <div class="site-card" style="left:72px;top:232px">
+      <h3>豆包</h3>
+      <div class="path">doubao.com/chat/…</div>
+      <div class="desc">普通对话和智能体对话都能导出，按接口分页拉取完整历史。</div>
+      <div class="chips"><span class="chip">Markdown</span><span class="chip">JSON</span><span class="chip">接口分页</span><span class="chip">滚动兜底</span></div>
+      <div class="floating doubao">导出当前会话内容 v0.4.0</div>
+    </div>
+    <div class="site-card" style="left:672px;top:232px">
+      <h3>DeepSeek</h3>
+      <div class="path">chat.deepseek.com/a/chat/s/…</div>
+      <div class="desc">保留深度思考过程，重新生成过的会话只导出你当前看到的分支。</div>
+      <div class="chips"><span class="chip">Markdown</span><span class="chip">JSON</span><span class="chip">深度思考</span><span class="chip">当前分支</span></div>
+      <div class="floating deepseek">导出当前会话内容 v0.4.0</div>
+    </div>
+    <div class="privacy">
+      <div><b>只在你点击时运行</b><span>不点导出，插件不会读取对话内容。</span></div>
+      <div><b>文件只存在本地</b><span>导出结果直接下载到你的电脑，不经过任何第三方服务器。</span></div>
+      <div><b>不碰账号密码</b><span>沿用浏览器当前的登录状态，不保存 cookie 或 token。</span></div>
+    </div>
+  </div>`,
+
+  small: () => `<div class="canvas small">
+    <img src="${ICON}" alt="" style="position:absolute;left:32px;top:36px;width:76px;height:76px">
+    <div style="position:absolute;left:124px;top:40px;font-size:34px;font-weight:800;letter-spacing:1px">对话导出助手</div>
+    <div style="position:absolute;left:126px;top:88px;font-size:16px;color:var(--muted)">AI 对话一键导出到本地</div>
+    <div style="position:absolute;left:32px;top:146px;display:flex;gap:10px">
+      <span class="chip" style="font-size:16px;padding:7px 14px">Markdown</span>
+      <span class="chip" style="font-size:16px;padding:7px 14px;background:#fff4e0;color:#b45309">JSON</span>
+    </div>
+    <div style="position:absolute;left:32px;bottom:32px;font-size:16px;font-weight:600;color:#374151">支持 豆包 · DeepSeek</div>
+    <div style="position:absolute;right:-30px;bottom:-40px;width:200px;height:200px;border-radius:44px;background:rgba(28,100,242,.08);transform:rotate(14deg)"></div>
+  </div>`,
+
+  marquee: () => `<div class="canvas marquee">
+    <div style="position:absolute;left:80px;top:96px;width:520px">
+      <div class="eyebrow" style="font-size:20px"><img src="${ICON}" alt="" style="width:56px;height:56px">对话导出助手</div>
+      <h1 class="title" style="font-size:52px;margin-top:22px">AI 对话<br><em>一键导出</em>到本地</h1>
+      <p class="sub" style="font-size:21px">Markdown 直接阅读，JSON 方便二次处理</p>
+      <div style="display:flex;gap:10px;margin-top:28px">
+        <span class="chip" style="font-size:16px;padding:8px 16px">支持豆包</span>
+        <span class="chip" style="font-size:16px;padding:8px 16px">支持 DeepSeek</span>
+        <span class="chip" style="font-size:16px;padding:8px 16px">本地处理</span>
+      </div>
+    </div>
+    ${browser({ left: 650, top: 60, width: 820, height: 540, url: "<b>chat.deepseek.com</b>/a/chat/s/12345678-…", site: "deepseek", think: true, floatRight: 100 })}
+  </div>`
+};
+
+document.getElementById("root").innerHTML = views[view]();
+primePopup({ status: "已导出 24 条消息为 Markdown。", tone: "success", detail: "doubao-chat-1234567890123456789-2026-10-27-20-36-06.md", progress: 100 });
+</script>
+</body>
+</html>
